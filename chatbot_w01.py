@@ -435,10 +435,10 @@ with tabs[3]:
     battle_presets = {
         "IT process":       "What is the difference between an incident and a problem in ITIL? One sentence each.",
         "Technical":        "What are the top 3 causes of VPN disconnections?",
-        "Factual (risky)":  "What was ServiceNow's revenue in fiscal year 2023?",
+        "Factual (risky)":  "What was ServiceNow's revenue in fiscal year 2025?",
         "Opinion":          "Is it better to use cloud or on-premise for an ERP system?",
         "Self-knowledge":   "What is your exact training data cutoff date?",
-        "Current event":    "Who is the current CEO of OpenAI?",
+        "Current event":    "Who is the current CEO of OpenAI and Anthropic?",
     }
 
     preset_battle = st.selectbox("Choose a battle question:", list(battle_presets.keys()))
