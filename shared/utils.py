@@ -9,6 +9,8 @@ Contents:
   - MODEL_COSTS         : pricing table (USD / 1K tokens)
   - check_api_keys()    : show which APIs are configured
   - quick_start()       : one-liner setup → (LLMClient, Tracer)
+  - ask_gpt()           : simple OpenAI chat wrapper for notebooks
+  - ask_claude()        : simple Anthropic chat wrapper for notebooks
   - LLMClient           : unified OpenAI + Anthropic client with cost tracking
   - Tracer              : lightweight observability (latency, tokens, cost)
   - PromptRegistry      : versioned prompt store
@@ -164,6 +166,70 @@ def quick_start(
     print(f"\n  Handy aliases  →  MODELS = {list(MODELS.keys())[:5]} …")
     print(f"  e.g.  client.chat(MODELS['fast'], user='Hello!')")
     return client, tracer
+
+
+def ask_gpt(
+    system: str,
+    user: str,
+    model: str = "fast",
+    temperature: float = 0.7,
+    max_tokens: int = 200,
+) -> str:
+    """
+    Simple OpenAI chat wrapper for notebooks.
+
+    Usage:
+        from shared.utils import ask_gpt
+        answer = ask_gpt("You are helpful.", "What is ITIL?")
+    """
+    if not _OPENAI:
+        raise RuntimeError("openai package not installed — run: pip install openai")
+    key = os.getenv("OPENAI_API_KEY", "")
+    if not key:
+        raise RuntimeError("OPENAI_API_KEY not set — add it to your .env file")
+    model = MODELS.get(model, model)
+    client = _OpenAI(api_key=key)
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user",   "content": user},
+        ],
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return resp.choices[0].message.content.strip()
+
+
+def ask_claude(
+    system: str,
+    user: str,
+    model: str = "haiku",
+    temperature: float = 0.7,
+    max_tokens: int = 300,
+) -> str:
+    """
+    Simple Anthropic chat wrapper for notebooks.
+
+    Usage:
+        from shared.utils import ask_claude
+        answer = ask_claude("You are helpful.", "What is ITIL?")
+    """
+    if not _ANTHROPIC:
+        raise RuntimeError("anthropic package not installed — run: pip install anthropic")
+    key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not key:
+        raise RuntimeError("ANTHROPIC_API_KEY not set — add it to your .env file")
+    model = MODELS.get(model, model)
+    client = _anthropic.Anthropic(api_key=key)
+    resp = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
+    return resp.content[0].text.strip()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
