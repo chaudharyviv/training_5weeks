@@ -7,7 +7,7 @@ import anthropic
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Persona Chatbot",
+    page_title="Persona Chatbot - Week 01",
     page_icon="🎭",
     layout="wide",
 )
