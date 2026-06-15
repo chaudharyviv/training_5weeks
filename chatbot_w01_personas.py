@@ -320,7 +320,6 @@ st.markdown(f"""
 
 st.markdown("---")
 
-# System Prompt - Always shown
 st.subheader("📋 System Prompt")
 st.markdown(f'<div class="prompt-box">{persona["system"]}</div>', unsafe_allow_html=True)
 
