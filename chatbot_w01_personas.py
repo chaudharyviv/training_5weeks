@@ -379,7 +379,6 @@ if submitted and user_input and user_input.strip():
             st.error(f"API Error: {e}")
             history.pop()
             st.stop()
-
     history.append({"role": "assistant", "content": assistant_reply})
     st.rerun()
 
