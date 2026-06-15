@@ -316,7 +316,6 @@ with col_title:
 
 st.markdown(f"""
 <span class="param-badge">🌡️ temp={st.session_state.temperature:.2f} (active)</span>
-<span class="param-badge">🎲 top_p={st.session_state.top_p:.2f} (display only)</span>
 """, unsafe_allow_html=True)
 
 st.markdown("---")
