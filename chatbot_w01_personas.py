@@ -275,8 +275,7 @@ if "top_p" not in st.session_state:
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🎭 Personas")
-    st.caption("Same question. Different perspectives.")
-
+    
     for key, persona in PERSONAS.items():
         is_active = st.session_state.active_persona == key
         st.markdown(f"""
@@ -296,7 +295,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### ⚙️ Parameters")
     st.session_state.temperature = st.slider("🌡️ Temperature", 0.0, 1.0, st.session_state.temperature, 0.05)
-    st.session_state.top_p = st.slider("🎲 Top-p", 0.1, 1.0, st.session_state.top_p, 0.05)
+  
 
     col1, col2 = st.columns(2)
     with col1:
@@ -316,8 +315,8 @@ with col_title:
     st.caption(f"{persona['role']} • {persona['user_label']}")
 
 st.markdown(f"""
-<span class="param-badge">🌡️ {st.session_state.temperature:.2f}</span>
-<span class="param-badge">🎲 {st.session_state.top_p:.2f}</span>
+<span class="param-badge">🌡️ temp={st.session_state.temperature:.2f} (active)</span>
+<span class="param-badge">🎲 top_p={st.session_state.top_p:.2f} (display only)</span>
 """, unsafe_allow_html=True)
 
 st.markdown("---")
@@ -372,7 +371,6 @@ if submitted and user_input and user_input.strip():
                 model="claude-sonnet-4-6",
                 max_tokens=3000,
                 temperature=st.session_state.temperature,
-                top_p=st.session_state.top_p,
                 system=persona["system"],
                 messages=history,
             )
