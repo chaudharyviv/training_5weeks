@@ -15,40 +15,120 @@ st.set_page_config(
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] { background: #0f1117; }
-[data-testid="stSidebar"] { background: #1a1d27; border-right: 1px solid #2e3148; }
+[data-testid="stAppViewContainer"] {
+    background: #f5f7fb;
+}
 
+[data-testid="stSidebar"] {
+    background: #ffffff;
+    border-right: 1px solid #dbe3f0;
+}
+
+/* Persona Cards */
 .persona-card {
-    background: #22253a; border: 1px solid #3a3f5c; border-radius: 10px;
-    padding: 12px 14px; margin-bottom: 8px;
+    background: #ffffff;
+    border: 1px solid #dbe3f0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
-.persona-card.active { border-color: #7c6af7; background: #2a2d4a; }
 
+.persona-card.active {
+    border-color: #4f46e5;
+    background: linear-gradient(
+        135deg,
+        #eef2ff,
+        #f5f3ff
+    );
+}
+
+/* User Message */
 .chat-user {
-    background: #1e2235; border: 1px solid #2e3355; border-radius: 12px 12px 2px 12px;
-    padding: 12px 16px; margin: 6px 0 6px 60px; color: #c8d0f0; font-size: 15px;
+    background: #2563eb;
+    color: white;
+    border-radius: 14px 14px 4px 14px;
+    padding: 12px 16px;
+    margin: 6px 0 6px 60px;
+    font-size: 15px;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
 }
+
+/* Assistant Message */
 .chat-assistant {
-    background: #1a2535; border: 1px solid #1f3a5f; border-radius: 12px 12px 12px 2px;
-    padding: 12px 16px; margin: 6px 60px 6px 0; color: #d0e8d0; font-size: 15px;
+    background: #ffffff;
+    color: #1f2937;
+    border: 1px solid #dbe3f0;
+    border-radius: 14px 14px 14px 4px;
+    padding: 12px 16px;
+    margin: 6px 60px 6px 0;
+    font-size: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
+
+/* Prompt Box */
 .prompt-box {
-    background: #13161f; border: 1px dashed #3a3f5c; border-radius: 8px;
-    padding: 12px 14px; font-family: monospace; font-size: 12px;
-    color: #8090b0; white-space: pre-wrap; line-height: 1.6;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #475569;
+    white-space: pre-wrap;
+    line-height: 1.6;
 }
+
+/* Tip Banner */
 .tip-banner {
-    background: #1a1f35; border-left: 3px solid #7c6af7; border-radius: 0 8px 8px 0;
-    padding: 10px 14px; font-size: 13px; color: #a0a8d0;
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #1e3a8a;
 }
+
+/* Parameter Badge */
 .param-badge {
-    background: #1e2235; border: 1px solid #3a3f5c; border-radius: 6px;
-    padding: 3px 10px; font-size: 12px; font-family: monospace; color: #8090c0;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #4338ca;
+}
+
+/* Buttons */
+.stButton > button {
+    background: linear-gradient(
+        135deg,
+        #4f46e5,
+        #7c3aed
+    );
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79,70,229,0.25);
+}
+
+/* Inputs */
+.stTextInput input,
+.stTextArea textarea {
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: white;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Persona definitions (Renamed to roles) ───────────────────────────────────
+# ── Persona definitions ───────────────────────────────────
 PERSONAS = {
     "Infrastructure Engineer": {
         "emoji": "🖥️",
@@ -104,7 +184,7 @@ Your regulatory radar covers:
 - German public procurement law (Vergaberecht) for government sales
 - Kündigungsschutzgesetz
 
-When someone pitches an idea, your first instinct is "Wer haftet?" — who is liable? Then you get excited about the opportunity. You are passionate about the European tech ecosystem but will not let anyone walk into a legal minefield without a warning.""",
+When someone pitches an idea, your first instinct is "Wer haftet?" who is liable? Then you get excited about the opportunity. You are passionate about the European tech ecosystem but will not let anyone walk into a legal minefield without a warning.""",
     },
 
     "Socratic Teacher": {
