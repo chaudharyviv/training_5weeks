@@ -13,6 +13,7 @@ import os
 import json
 import re
 from datetime import datetime
+from openai import OpenAI
 import streamlit as st
 
 # ── Page Config ───────────────────────────────────────────────────────────────
@@ -26,202 +27,39 @@ st.set_page_config(
 # ── Custom CSS for Eye-Catching Design ──────────────────────────────────────
 st.markdown("""
 <style>
-    /* Main container styling */
-    .main {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
-    
-    /* Card styling */
-    .stCard {
-        background: white;
-        border-radius: 20px;
-        padding: 20px;
+    .main { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+    .stCard, .metric-card {
+        background: white; border-radius: 20px; padding: 20px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255,255,255,0.8);
-        backdrop-filter: blur(10px);
     }
-    
-    /* Gradient headers */
     .gradient-text {
         background: linear-gradient(120deg, #155799, #159957);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         font-weight: 800;
     }
-    
-    /* Score display */
     .score-circle {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-        font-size: 36px;
-        font-weight: 800;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        width: 130px; height: 130px; border-radius: 50%; margin: 0 auto;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 42px; font-weight: 800; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
         transition: all 0.3s ease;
     }
-    
-    .score-circle:hover {
-        transform: scale(1.05);
-        box-shadow: 0 12px 40px rgba(0,0,0,0.2);
-    }
-    
-    /* Verdict badges */
-    .verdict-badge {
-        padding: 8px 24px;
-        border-radius: 50px;
-        font-weight: 700;
-        font-size: 18px;
-        text-align: center;
-        display: inline-block;
-        letter-spacing: 0.5px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    /* Animated stats */
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .stat-card {
-        animation: slideIn 0.5s ease-out;
-        background: white;
-        border-radius: 15px;
-        padding: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        border-left: 4px solid;
-        transition: all 0.3s ease;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-    }
-    
-    /* Progress bar styling */
-    .stProgress > div > div {
-        background: linear-gradient(90deg, #f7971e, #ffd200);
-        border-radius: 20px;
-        height: 12px;
-    }
-    
-    /* Button styling */
+    .score-circle:hover { transform: scale(1.08); }
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: 600;
-        border: none;
-        border-radius: 12px;
-        padding: 12px 30px;
-        transition: all 0.3s ease;
-        letter-spacing: 0.5px;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
-    }
-    
-    /* Custom expander */
-    .streamlit-expanderHeader {
-        font-weight: 600;
-        color: #2c3e50;
-        border-radius: 10px !important;
-        transition: all 0.3s ease;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        background: #f0f2f6 !important;
-    }
-    
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        padding: 8px 20px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white !important;
-    }
-    
-    /* Metric cards */
-    .metric-card {
-        background: white;
-        border-radius: 15px;
-        padding: 20px;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-    }
-    
-    /* Divider styling */
-    hr {
-        margin: 30px 0;
-        border: none;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
-    }
-    
-    /* Custom scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border-radius: 10px;
-    }
-    
-    /* Badge animations */
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-    }
-    
-    .pulse-animation {
-        animation: pulse 2s ease-in-out infinite;
-    }
-    
-    /* Success/Error/Warning styling */
-    .stAlert {
-        border-radius: 15px;
-        border-left: 6px solid;
-        padding: 15px 20px;
+        color: white; font-weight: 600; border-radius: 12px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Clients ───────────────────────────────────────────────────────────────────
-if "oai" not in st.session_state:
-    from openai import OpenAI
-    st.session_state.oai = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
+@st.cache_resource
+def get_client():
+    try:
+        return OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    except Exception:
+        return None
 
-oai = st.session_state.oai
+oai = get_client()
 
-# ── Job Descriptions ──────────────────────────────────────────────────────────
 JOB_DESCRIPTIONS = {
     "Linux Engineer": {
         "title": "🐧 Linux Engineer",
@@ -257,21 +95,15 @@ We are seeking an experienced Linux Engineer to manage and optimize our Linux-ba
 - Excellent documentation skills
 - Ability to work in a 24/7 on-call rotation
 - Good communication skills for team collaboration
-""",
-        "weighted_criteria": {
-            "Technical Skills": 40,
-            "Experience": 25,
-            "Education & Certifications": 20,
-            "Soft Skills": 15
-        }
+"""
     },
     
-    "Coding Engineer": {
-        "title": "💻 Coding Engineer",
+    "Software Engineer": {
+        "title": "💻 Software Engineer",
         "icon": "💻",
         "description": """
 **Role Summary:**
-We are looking for a talented Coding Engineer to join our development team. The ideal candidate will write clean, efficient, and maintainable code while contributing to all phases of the software development lifecycle.
+We are looking for a talented Software Engineer to join our development team. The ideal candidate will write clean, efficient, and maintainable code while contributing to all phases of the software development lifecycle.
 
 **Key Responsibilities:**
 - Design, develop, and maintain high-quality software applications
@@ -301,104 +133,16 @@ We are looking for a talented Coding Engineer to join our development team. The 
 - Excellent communication and collaboration abilities
 - Self-motivated with ability to work independently
 - Continuous learning mindset
-""",
-        "weighted_criteria": {
-            "Technical Skills": 45,
-            "Experience": 25,
-            "Education": 15,
-            "Soft Skills": 15
-        }
-    },
-    
-    "Project Manager": {
-        "title": "📊 Project Manager",
-        "icon": "📊",
-        "description": """
-**Role Summary:**
-We are seeking an experienced Project Manager to lead and deliver complex technology projects. The ideal candidate will have a proven track record of managing cross-functional teams and delivering projects on time and within budget.
-
-**Key Responsibilities:**
-- Lead end-to-end project delivery from initiation to closure
-- Develop comprehensive project plans, timelines, and budgets
-- Coordinate cross-functional teams (development, QA, operations, business stakeholders)
-- Manage stakeholder expectations and provide regular project updates
-- Identify and mitigate project risks and issues proactively
-- Ensure project documentation and reporting are maintained
-- Drive continuous improvement in project management processes
-
-**Required Skills & Experience:**
-- 7+ years of project management experience in technology
-- Proven track record of delivering complex projects
-- Strong understanding of project management methodologies (Agile, Waterfall, Hybrid)
-- Experience with project management tools (JIRA, MS Project, Asana)
-- Budget management and resource allocation expertise
-- Risk management and contingency planning skills
-- Bachelor's degree in Business, Computer Science, or related field
-
-**Nice to Have:**
-- PMP, Prince2, or Agile certification
-- Experience with AI/ML projects
-- Background in software development
-- International project experience
-
-**Soft Skills:**
-- Exceptional leadership and team management abilities
-- Excellent communication and presentation skills
-- Strong negotiation and stakeholder management skills
-- Adaptability and ability to work under pressure
-""",
-        "weighted_criteria": {
-            "Leadership & Management": 30,
-            "Project Delivery": 30,
-            "Communication": 25,
-            "Certifications & Education": 15
-        }
-    },
-    
-    "Service Delivery Manager": {
-        "title": "🔄 Service Delivery Manager",
-        "icon": "🔄",
-        "description": """
-**Role Summary:**
-We are seeking a proactive Service Delivery Manager to ensure exceptional IT service delivery to our clients. The ideal candidate will manage service level agreements (SLAs), drive service improvement, and maintain strong client relationships.
-
-**Key Responsibilities:**
-- Manage service delivery operations to meet or exceed agreed SLAs
-- Lead incident management, problem management, and change management processes
-- Develop and maintain strong client relationships as a trusted advisor
-- Monitor service performance metrics and generate management reports
-- Drive continuous service improvement initiatives
-- Manage service delivery team including resource allocation and performance
-- Conduct service reviews and present to executive stakeholders
-
-**Required Skills & Experience:**
-- 6+ years of service delivery or IT operations management experience
-- Proven track record of managing SLAs and client relationships
-- Deep understanding of ITIL framework and ITSM best practices
-- Experience with incident, problem, and change management
-- Strong vendor management and negotiation skills
-- Experience with service management tools (ServiceNow, JIRA, etc.)
-- Bachelor's degree in Business, IT, or related field
-
-**Nice to Have:**
-- ITIL certification (V3 or V4)
-- Experience with managed services or consulting
-- Knowledge of cloud services and infrastructure
-- Experience in financial services or healthcare sectors
-
-**Soft Skills:**
-- Excellent client-facing and communication skills
-- Strong leadership and team motivation abilities
-- Strategic thinking with operational focus
-- Problem-solving and crisis management skills
-""",
-        "weighted_criteria": {
-            "Service Delivery Experience": 35,
-            "Client & Stakeholder Management": 30,
-            "Process & ITIL Knowledge": 20,
-            "Leadership & Communication": 15
-        }
+"""
     }
+}
+
+# ── Default Weights  ───────────────────────────────────────
+DEFAULT_WEIGHTS = {
+    "Technical Skills": 40,
+    "Experience": 25,
+    "Education & Certifications": 20,
+    "Soft Skills": 15
 }
 
 # ── Sample Resumes ──────────────────────────────────────────────────────────
@@ -548,225 +292,53 @@ CONTRIBUTIONS
 • Speaker at PyCon 2022
 """,
 
-    "Strong Project Manager": """
-MICHAEL CHEN
-Senior Project Manager
-Email: michael.c@email.com | Phone: (555) 345-6789
+"Weak Software Engineer": """
+John Baker
+Senior Software Analyst
+Email: sarah.j@email.com | Phone: (555) 234-5678
 
 PROFESSIONAL SUMMARY
-Senior Project Manager with 10 years of experience leading technology projects for Fortune 500 companies. Certified PMP with expertise in Agile methodologies and digital transformation initiatives.
-
+Senior Software Engineer with 2 years of experience developing scalable web applications. 
 TECHNICAL SKILLS
-• Project Management: Agile, Scrum, Kanban, Waterfall, Hybrid
-• Tools: JIRA, MS Project, Asana, Trello, Confluence
-• Budget Management: Program-level budgeting up to $5M
-• Risk Management: MITRE, ISO 31000
-• Stakeholder Management: Executive reporting, client relations
-• Project Lifecycle: Initiation to closure, change management
-• Communication: Technical and business reporting, presentations
+• Languages: Python, Java, JavaScript, Go
+• Frameworks: Django, Spring Boot, React, Node.js
+• Databases: PostgreSQL, MongoDB, Redis
+• Cloud: AWS (EC2, Lambda, RDS, S3), GCP
+• DevOps: Docker, Kubernetes, CI/CD (Jenkins, GitLab CI)
+• Version Control: Git, GitHub, GitLab
+• Testing: PyTest, JUnit, Selenium
+• Architecture: REST APIs, Microservices, Event-Driven Architecture
 
 PROFESSIONAL EXPERIENCE
 
-Senior Project Manager | GlobalTech Systems | 2018-Present
-• Managed 15+ technology projects ranging from $500K to $5M annually
-• Led 30-person cross-functional teams (developers, QA, operations, business)
-• Achieved 95% on-time delivery rate across all projects
-• Implemented Agile transformation across 3 departments
-• Drove $2M cost savings through process optimization
-• Recognized as "Top Performer" 2022 for exceptional project delivery
+Senior Software Engineer | CloudTech Solutions | 2019-Present
+• Led development of microservices architecture serving 1M+ users
+• Designed and implemented RESTful APIs with 99.9% uptime
+• Reduced average response time from 200ms to 45ms
+• Mentored 5 junior developers through code reviews and pair programming
+• Implemented CI/CD pipeline reducing deployment time from 2 hours to 15 minutes
+• Achieved 85% test coverage across all services
 
-Project Manager | InnovateCorp | 2015-2018
-• Managed software development projects for financial services clients
-• Coordinated with 5+ simultaneous project streams
-• Maintained project budgets and resource allocation
-• Conducted stakeholder meetings and status reporting
-• Successfully delivered 12 projects ahead of schedule
-
-Project Manager | TechStart Inc. | 2013-2015
-• Led product development for SaaS platform
-• Managed vendor relationships and procurement
-• Created project schedules and resource plans
-• Facilitated daily stand-ups and sprint planning
+Software Engineer | Digital Innovations | 2017-2019
+• Developed full-stack web applications using Python Django and React
+• Collaborated with product team to define and implement features
+• Built data processing pipelines for analytics reporting
+• Participated in sprint planning and agile ceremonies
 
 EDUCATION
-Master of Business Administration
-Harvard Business School | 2013
-GPA: 3.8/4.0
+Master of Science in Computer Science
+Stanford University | 2017
+GPA: 3.9/4.0
 
-Bachelor of Science in Computer Engineering
-MIT | 2011
-GPA: 3.6/4.0
-
-CERTIFICATIONS
-• Project Management Professional (PMP)
-• Certified Scrum Master (CSM)
-• SAFe Agilist
-
-ACHIEVEMENTS
-• PMI Project of the Year Nominee 2022
-• Published article on "Agile at Scale" in Project Management Journal
-""",
-
-    "Weak Project Manager": """
-LISA ADAMS
-Project Coordinator
-Email: lisa.a@email.com | Phone: (555) 456-7890
-
-PROFESSIONAL SUMMARY
-Recent MBA graduate seeking project management opportunities. Experience in administrative coordination and team support. Passionate about helping teams succeed.
-
-TECHNICAL SKILLS
-• Microsoft Office Suite (Excel, Word, PowerPoint)
-• Team collaboration tools (Slack, Teams)
-• Basic project tracking (JIRA, Trello)
-• Administrative coordination
-• Event planning
-• Basic data analysis in Excel
-
-PROFESSIONAL EXPERIENCE
-
-Project Coordinator | StartupX | 2021-Present
-• Assist project managers with scheduling and documentation
-• Track project milestones and update tracking tools
-• Coordinate team meetings and prepare materials
-• Maintain project files and documentation
-• Respond to stakeholder inquiries
-
-Administrative Assistant | Corporate Inc. | 2019-2021
-• Provided administrative support to executive team
-• Managed calendars and scheduled appointments
-• Prepared meeting minutes and distributed to attendees
-• Coordinated office events and activities
-• Managed general office operations
-
-EDUCATION
-Master of Business Administration
-State University | 2022
-GPA: 3.5/4.0
-
-Bachelor of Arts in Communications
-State University | 2019
-GPA: 3.6/4.0
-
-CERTIFICATIONS
-None
-
-INTERNSHIP
-Summer Intern | TechStart | 2018
-• Assisted with market research for new product
-• Created presentations for investor meetings
-""",
-
-    "Strong Service Delivery Manager": """
-ROBERT GARCIA
-Service Delivery Manager
-Email: robert.g@email.com | Phone: (555) 567-8901
-
-PROFESSIONAL SUMMARY
-Service Delivery Manager with 10 years of experience ensuring exceptional IT service delivery for enterprise clients. Expert in ITIL framework with proven ability to maintain high SLA performance and client satisfaction.
-
-TECHNICAL SKILLS
-• Service Management: ITIL V3/V4 (Incident, Problem, Change, Knowledge)
-• Tools: ServiceNow, BMC Remedy, JIRA, Confluence
-• SLA Management: Performance monitoring, reporting
-• Client Management: Enterprise accounts, stakeholder relations
-• Operations: Service desk management, escalation procedures
-• Metrics: KPI development, dashboard reporting, CSAT
-
-PROFESSIONAL EXPERIENCE
-
-Service Delivery Manager | EnterpriseIT Solutions | 2018-Present
-• Manage service delivery for 3 enterprise clients (annual revenue $12M)
-• Maintain 99.9% SLA compliance across all service lines
-• Implemented ITIL processes resulting in 40% faster incident resolution
-• Led 25-person service delivery team across multiple locations
-• Achieved 95% client satisfaction (CSAT) - highest in organization
-• Reduced critical incidents by 30% through proactive monitoring
-
-Service Delivery Lead | TechServices Global | 2015-2018
-• Managed service delivery for 6 accounts totaling $8M in revenue
-• Designed and implemented service improvement plans
-• Conducted quarterly service reviews with executive stakeholders
-• Managed 15-person team across help desk and service desk operations
-• Successfully onboarded 3 new clients in 12 months
-
-IT Operations Manager | DataSecure Corp | 2012-2015
-• Led IT operations for 1000+ user organization
-• Managed incident, problem, and change management processes
-• Reduced system downtime by 50% through improved processes
-• Implemented monitoring and alerting systems
-
-EDUCATION
-Master of Science in Information Systems
-Carnegie Mellon University | 2012
+Bachelor of Science in Software Engineering
+University of California, Berkeley | 2015
 GPA: 3.7/4.0
 
-Bachelor of Science in Computer Science
-University of Texas | 2010
-GPA: 3.5/4.0
-
-CERTIFICATIONS
-• ITIL V4 Managing Professional
-• ITIL V3 Expert
-• Certified Service Manager (CSM)
-• TOGAF Certified
-
-ACHIEVEMENTS
-• Awarded "Service Excellence" by Clients 2021
-• Published whitepaper on "Digital Service Transformation"
-• Speaker at ServiceNow Knowledge 2023
+CONTRIBUTIONS
+• Open-source contributor to Django and React
+• Published 3 technical articles on Medium about microservices
+• Speaker at PyCon 2022
 """,
-
-    "Weak Service Delivery Manager": """
-PATRICIA LEE
-Service Desk Supervisor
-Email: patricia.l@email.com | Phone: (555) 678-9012
-
-PROFESSIONAL SUMMARY
-Service desk professional with experience in customer support and team supervision. Seeking growth opportunity in service delivery management.
-
-TECHNICAL SKILLS
-• Service desk operations
-• Customer service and support
-• Team supervision (4-5 people)
-• Help desk ticketing systems (Zendesk, Freshservice)
-• Microsoft Office Suite
-• Basic IT knowledge (hardware, software)
-
-PROFESSIONAL EXPERIENCE
-
-Service Desk Supervisor | HelpTech Inc. | 2020-Present
-• Supervise 5 help desk agents providing tier 1 support
-• Monitor ticket queues and manage workloads
-• Handle escalations and complex customer issues
-• Create shift schedules and manage attendance
-• Prepare basic service reports
-
-Senior Support Agent | CustomerCare Solutions | 2018-2020
-• Provided technical support for various software products
-• Responded to 30+ customer tickets daily
-• Escalated unresolved issues to tier 2 support
-• Maintained knowledge base articles
-
-Customer Support Representative | TeleSupport Inc. | 2016-2018
-• Answered customer calls and emails
-• Resolved basic technical issues
-• Documented customer interactions in ticketing system
-• Handled customer complaints professionally
-
-EDUCATION
-Bachelor of Arts in Communications
-State College | 2016
-GPA: 3.4/4.0
-
-CERTIFICATIONS
-• ITIL V3 Foundation (2021)
-• Help Desk Institute (HDI) Certified
-
-PROJECTS
-• Implemented new call routing system
-• Created customer service training materials
-"""
 }
 
 # ── System Prompts ──────────────────────────────────────────────────────────
@@ -832,260 +404,122 @@ RECOMMENDATION:
 
 Be fair, objective, and evidence-based. Reference specific points from the resume in your justification.
 """
-
 # ── Helper Functions ──────────────────────────────────────────────────────
-
-def ask_gpt(system: str, user: str, temperature: float = 0, max_tokens: int = 1000) -> str:
-    """Call GPT-4o-mini with the given prompts."""
+def ask_gpt(system: str, user: str, temperature: float = 0.1):
     try:
         r = oai.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user}
-            ],
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=1200
         )
         return r.choices[0].message.content.strip()
     except Exception as e:
         return f"❌ Error: {e}"
 
-def parse_evaluation_response(response: str) -> dict:
-    """Parse the AI evaluation response to extract structured data."""
-    result = {
-        "raw": response,
-        "overall_score": 0,
-        "verdict": "ERROR",
-        "category_scores": {},
-        "strengths": [],
-        "gaps": [],
-        "justification": response
-    }
+def parse_evaluation_response(response: str):
+    result = {"raw": response, "overall_score": 0.0, "verdict": "ERROR", "category_scores": {}, "strengths": [], "gaps": []}
     
-    # Extract overall score
-    score_pattern = r"Overall Score:\s*([\d.]+)/10"
-    score_match = re.search(score_pattern, response)
+    score_match = re.search(r"Overall Score:\s*([\d.]+)", response, re.I)
     if score_match:
         result["overall_score"] = float(score_match.group(1))
     
-    # Extract verdict
-    verdict_pattern = r"Verdict:\s*(\w+)"
-    verdict_match = re.search(verdict_pattern, response)
+    verdict_match = re.search(r"Verdict:\s*(SELECTED|MANAGER REVIEW|NOT SELECTED)", response, re.I)
     if verdict_match:
-        result["verdict"] = verdict_match.group(1)
+        result["verdict"] = verdict_match.group(1).upper()
     
-    # Extract category scores
-    cat_pattern = r"([^-]+):\s*([\d.]+)/10"
-    for match in re.finditer(cat_pattern, response):
-        category = match.group(1).strip()
-        score = float(match.group(2))
-        if category and category not in ["Overall Score"]:
-            result["category_scores"][category] = score
+    for match in re.finditer(r"([A-Za-z &\-]+?):\s*([\d.]+)/10", response):
+        cat = match.group(1).strip()
+        if "Overall" not in cat:
+            result["category_scores"][cat] = float(match.group(2))
     
-    # Extract strengths
-    strengths_section = re.search(r"STRENGTHS:(.*?)(?:GAPS|$)", response, re.DOTALL)
-    if strengths_section:
-        strengths = re.findall(r"[•-]\s*(.+?)(?:\n|$)", strengths_section.group(1))
-        result["strengths"] = [s.strip() for s in strengths if s.strip()]
+    strengths_sec = re.search(r"STRENGTHS:(.*?)(?:GAPS|RECOMMENDATION|$)", response, re.DOTALL | re.I)
+    if strengths_sec:
+        result["strengths"] = [s.strip() for s in re.findall(r"[•-]\s*(.+)", strengths_sec.group(1)) if s.strip()]
     
-    # Extract gaps
-    gaps_section = re.search(r"GAPS.*?:(.*?)(?:RECOMMENDATION|$)", response, re.DOTALL)
-    if gaps_section:
-        gaps = re.findall(r"[•-]\s*(.+?)(?:\n|$)", gaps_section.group(1))
-        result["gaps"] = [g.strip() for g in gaps if g.strip()]
+    gaps_sec = re.search(r"GAPS.*?:(.*?)(?:RECOMMENDATION|$)", response, re.DOTALL | re.I)
+    if gaps_sec:
+        result["gaps"] = [g.strip() for g in re.findall(r"[•-]\s*(.+)", gaps_sec.group(1)) if g.strip()]
     
     return result
 
-def scan_resume(jd_text: str, resume_text: str, temperature: float = 0.1) -> dict:
-    """Evaluate a resume against job description with scoring."""
+def get_score_color(score: float):
+    if score >= 7: return "#00a65a"
+    elif score >= 5: return "#f39c12"
+    return "#e74c3c"
+
+def get_verdict_icon(verdict: str):
+    return {"SELECTED": "✅", "MANAGER REVIEW": "⚠️", "NOT SELECTED": "❌"}.get(verdict, "❓")
+
+def get_verdict_color(verdict: str):
+    return {"SELECTED": "#155724", "MANAGER REVIEW": "#856404", "NOT SELECTED": "#721c24"}.get(verdict, "#333")
+
+def scan_resume(jd_text: str, resume_text: str, temperature: float = 0.1):
+    prompt = f"JOB DESCRIPTION:\n{jd_text}\n\nCANDIDATE RESUME:\n{resume_text}"
+    raw_response = ask_gpt(RESUME_SCANNER_SYSTEM, prompt, temperature)
+    if "❌ Error" in raw_response:
+        return {"error": raw_response}
     
-    user_prompt = f"""
-JOB DESCRIPTION:
-{jd_text}
-
-CANDIDATE RESUME:
-{resume_text}
-
-Please evaluate this candidate using the scoring system and format specified. Be thorough and evidence-based.
-"""
+    result = parse_evaluation_response(raw_response)
+    result["raw_output"] = raw_response
     
-    try:
-        response = ask_gpt(RESUME_SCANNER_SYSTEM, user_prompt, temperature, max_tokens=1000)
-        parsed = parse_evaluation_response(response)
-        parsed["raw_output"] = response
-        return parsed
-    except Exception as e:
-        return {
-            "error": str(e),
-            "raw_output": "",
-            "verdict": "ERROR",
-            "overall_score": 0
-        }
-
-def get_verdict_icon(verdict: str) -> str:
-    """Get icon for verdict display."""
-    icons = {
-        "SELECTED": "✅",
-        "MANAGER REVIEW": "⚠️",
-        "NOT SELECTED": "❌",
-        "ERROR": "⚙️"
-    }
-    return icons.get(verdict.upper(), "❓")
-
-def get_verdict_color(verdict: str) -> str:
-    """Get color for verdict display."""
-    colors = {
-        "SELECTED": "#00a65a",
-        "MANAGER REVIEW": "#f39c12",
-        "NOT SELECTED": "#e74c3c",
-        "ERROR": "#95a5a6"
-    }
-    return colors.get(verdict.upper(), "#95a5a6")
-
-def get_score_color(score: float) -> str:
-    """Get color based on score."""
-    if score >= 7:
-        return "#00a65a"
-    elif score >= 5:
-        return "#f39c12"
+    just_match = re.search(r"DETAILED JUSTIFICATION:(.*?)(?:STRENGTHS:|GAPS & CONCERNS:|RECOMMENDATION:|$)", raw_response, re.DOTALL | re.I)
+    if just_match:
+        result["justification"] = just_match.group(1).strip()
     else:
-        return "#e74c3c"
+        result["justification"] = "See raw output for details."
+        
+    return result
 
-# ── UI Header ────────────────────────────────────────────────────────────────
+# ── UI ───────────────────────────────────────────────────────────────────────
+st.markdown('<h1 style="text-align: center;"><span class="gradient-text">🎯 Resume Scanner Pro</span></h1>', unsafe_allow_html=True)
+st.caption("Training Demo • Visual & Interactive")
 
-# Hero section with gradient
-st.markdown("""
-<div style="text-align: center; padding: 20px 0 30px 0;">
-    <h1 style="font-size: 48px; margin-bottom: 0;">
-        <span style="background: linear-gradient(120deg, #155799, #159957); 
-                     -webkit-background-clip: text; 
-                     -webkit-text-fill-color: transparent;
-                     font-weight: 800;">
-            🎯 Resume Scanner Pro
-        </span>
-    </h1>
-    <p style="font-size: 18px; color: #666; margin-top: 10px;">
-        AI-Powered Candidate Evaluation with 1-10 Scoring System
-    </p>
-    <p style="font-size: 14px; color: #999;">
-        Built with GPT-4o-mini • Context Engineering • Prompt Design
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-st.divider()
-
-# ── Main Layout ─────────────────────────────────────────────────────────────
-
-# Left: Input Section, Right: Results
-col_left, col_right = st.columns([1.2, 1.8], gap="large")
+col_left, col_right = st.columns([1.2, 1.8])
 
 with col_left:
-    st.markdown("""
-    <div style="background: white; border-radius: 20px; padding: 20px; 
-                box-shadow: 0 10px 40px rgba(0,0,0,0.08);">
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="stCard">', unsafe_allow_html=True)
     
-    # ── Job Description ─────────────────────────────────────────────────
-    st.markdown("### 📋 Job Description")
+    tab_jd, tab_res, tab_settings = st.tabs(["📋 Job Info", "📄 Resume", "⚙️ Settings"])
     
-    # Role selection with icons
-    selected_role = st.radio(
-        "Select role:",
-        [f"{JOB_DESCRIPTIONS['Linux Engineer']['icon']} Linux Engineer",
-         f"{JOB_DESCRIPTIONS['Coding Engineer']['icon']} Coding Engineer",
-         f"{JOB_DESCRIPTIONS['Project Manager']['icon']} Project Manager",
-         f"{JOB_DESCRIPTIONS['Service Delivery Manager']['icon']} Service Delivery Manager",
-         "✏️ Custom JD"],
-        index=0,
-        horizontal=False
-    )
-    
-    # Determine which JD to use
-    if "Custom" in selected_role:
-        jd_text = st.text_area(
-            "Enter custom Job Description:",
-            height=200,
-            placeholder="Paste job description here...",
-            key="custom_jd"
-        )
-        jd_title = "Custom JD"
-        weights = {}
-    else:
-        # Extract the role name without icon
-        role_name = selected_role.split(" ", 1)[1] if " " in selected_role else selected_role
-        # Remove icon and clean
-        for role in JOB_DESCRIPTIONS:
-            if role in role_name:
-                jd_text = JOB_DESCRIPTIONS[role]["description"]
-                jd_title = role
-                weights = JOB_DESCRIPTIONS[role]["weighted_criteria"]
-                break
-        else:
-            jd_text = JOB_DESCRIPTIONS["Linux Engineer"]["description"]
-            jd_title = "Linux Engineer"
-            weights = JOB_DESCRIPTIONS["Linux Engineer"]["weighted_criteria"]
+    with tab_jd:
+        role_list = [f"{v['icon']} {k}" for k, v in JOB_DESCRIPTIONS.items()] + ["✏️ Custom JD"]
+        selected_role = st.radio("Select role:", role_list, index=0)
         
-        with st.expander("📄 View Job Description"):
-            st.markdown(jd_text)
+        if "Custom" in selected_role:
+            jd_text = st.text_area("Custom JD", height=200)
+            weights = {}
+            jd_title = "Custom JD"
+        else:
+            role_name = selected_role.split(" ", 1)[1]
+            jd = JOB_DESCRIPTIONS[role_name]
+            jd_text = jd["description"]
+            weights = jd.get("weighted_criteria", DEFAULT_WEIGHTS)
+            jd_title = jd.get("title", role_name)
+            with st.expander("View JD"):
+                st.markdown(jd_text)
+        
+        if weights:
+            st.caption("**Weighted Criteria**")
+            for k, v in weights.items():
+                st.progress(v/100, text=f"{k} ({v}%)")
     
-    # Weighted criteria display
-    if weights:
-        st.caption("**🎯 Weighted Criteria:**")
-        for cat, weight in weights.items():
-            st.progress(weight / 100, text=f"{cat}: {weight}%")
+    with tab_res:
+        resume_option = st.selectbox("Load sample", ["Select..."] + list(SAMPLE_RESUMES.keys()) + ["Custom"])
+        if resume_option in SAMPLE_RESUMES:
+            resume_text = SAMPLE_RESUMES[resume_option]
+            with st.expander("View Resume"):
+                st.markdown(resume_text)
+        else:
+            resume_text = st.text_area("Paste resume", height=280)
     
+    with tab_settings:
+        temperature = st.slider("Temperature", 0.0, 1.0, 0.1)
+        
     st.divider()
+    evaluate_btn = st.button("🔍 Evaluate Candidate", type="primary", use_container_width=True)
     
-    # ── Resume Input ──────────────────────────────────────────────────
-    st.markdown("### 📄 Candidate Resume")
-    
-    resume_option = st.selectbox(
-        "Load sample resume:",
-        ["Select a sample..."] + list(SAMPLE_RESUMES.keys()) + ["Custom Resume"],
-        index=0
-    )
-    
-    if resume_option != "Select a sample..." and resume_option != "Custom Resume":
-        resume_text = SAMPLE_RESUMES[resume_option]
-        with st.expander("📄 View Resume"):
-            st.markdown(resume_text)
-        st.caption(f"📎 Loaded: {resume_option}")
-    else:
-        resume_text = st.text_area(
-            "Paste candidate resume:",
-            height=250,
-            placeholder="Paste the candidate's resume here...",
-            key="custom_resume"
-        )
-    
-    st.divider()
-    
-    # ── Evaluation Settings ───────────────────────────────────────────
-    st.markdown("### ⚙️ Settings")
-    
-    col_temp, col_btn = st.columns([1, 1.5])
-    
-    with col_temp:
-        temperature = st.slider(
-            "Temperature",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.1,
-            step=0.1,
-            help="Lower = consistent, Higher = creative"
-        )
-    
-    with col_btn:
-        st.markdown("###")
-        evaluate_btn = st.button(
-            "🔍 Evaluate Candidate",
-            type="primary",
-            use_container_width=True
-        )
-    
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Right Column: Results ──────────────────────────────────────────────────
 
@@ -1287,7 +721,7 @@ with col_right:
 
 st.divider()
 
-# ── Teaching Section ──────────────────────────────────────────────────────
+# ── Training Section ──────────────────────────────────────────────────────
 
 with st.expander("💡 Why This is a Great Prompt Engineering Example", expanded=False):
     col_teach1, col_teach2, col_teach3 = st.columns(3)
