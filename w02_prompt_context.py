@@ -293,51 +293,43 @@ CONTRIBUTIONS
 """,
 
 "Weak Software Engineer": """
-John Baker
-Senior Software Analyst
-Email: sarah.j@email.com | Phone: (555) 234-5678
+MARK PATEL
+Junior Developer / IT Support
+Email: mark.patel@email.com | Phone: (555) 876-5432
 
 PROFESSIONAL SUMMARY
-Senior Software Engineer with 2 years of experience developing scalable web applications. 
+Enthusiastic individual with a passion for technology looking to transition into software development. Self-taught programmer with some personal project experience. Recently completed an online bootcamp in web development.
+
 TECHNICAL SKILLS
-• Languages: Python, Java, JavaScript, Go
-• Frameworks: Django, Spring Boot, React, Node.js
-• Databases: PostgreSQL, MongoDB, Redis
-• Cloud: AWS (EC2, Lambda, RDS, S3), GCP
-• DevOps: Docker, Kubernetes, CI/CD (Jenkins, GitLab CI)
-• Version Control: Git, GitHub, GitLab
-• Testing: PyTest, JUnit, Selenium
-• Architecture: REST APIs, Microservices, Event-Driven Architecture
+• Languages: Basic Python (beginner), HTML, CSS
+• Tools: Microsoft Office, Google Workspace
+• Basic understanding of JavaScript
+• Familiar with WordPress
 
 PROFESSIONAL EXPERIENCE
 
-Senior Software Engineer | CloudTech Solutions | 2019-Present
-• Led development of microservices architecture serving 1M+ users
-• Designed and implemented RESTful APIs with 99.9% uptime
-• Reduced average response time from 200ms to 45ms
-• Mentored 5 junior developers through code reviews and pair programming
-• Implemented CI/CD pipeline reducing deployment time from 2 hours to 15 minutes
-• Achieved 85% test coverage across all services
+IT Support Technician | Retail Chain HQ | 2021-Present
+• Resolved printer, network, and desktop issues for 80+ office staff
+• Reset passwords and managed basic user accounts in Active Directory
+• Assisted in setting up new employee workstations
 
-Software Engineer | Digital Innovations | 2017-2019
-• Developed full-stack web applications using Python Django and React
-• Collaborated with product team to define and implement features
-• Built data processing pipelines for analytics reporting
-• Participated in sprint planning and agile ceremonies
+Data Entry Clerk | Insurance Company | 2019-2021
+• Entered policy data into internal CRM system
+• Generated weekly Excel reports for the operations team
+• Coordinated with field agents via email
 
 EDUCATION
-Master of Science in Computer Science
-Stanford University | 2017
-GPA: 3.9/4.0
+Bachelor of Arts in Business Administration
+Regional State University | 2019
+GPA: 2.6/4.0
 
-Bachelor of Science in Software Engineering
-University of California, Berkeley | 2015
-GPA: 3.7/4.0
+CERTIFICATIONS
+• Udemy — "Python for Beginners" (2023, online course)
+• Google IT Support Professional Certificate (2022)
 
-CONTRIBUTIONS
-• Open-source contributor to Django and React
-• Published 3 technical articles on Medium about microservices
-• Speaker at PyCon 2022
+PROJECTS
+• Personal blog built with WordPress
+• A basic to-do list app in Python using print() statements (GitHub: 1 commit)
 """,
 }
 
@@ -475,62 +467,98 @@ def scan_resume(jd_text: str, resume_text: str, temperature: float = 0.1):
 st.markdown('<h1 style="text-align: center;"><span class="gradient-text">🎯 Resume Scanner Pro</span></h1>', unsafe_allow_html=True)
 st.caption("Training Demo • Visual & Interactive")
 
-col_left, col_right = st.columns([1.2, 1.8])
+# ── Top control bar: role selector + resume selector + temperature + button ──
+ctrl1, ctrl2, ctrl3, ctrl4 = st.columns([1.4, 1.4, 0.6, 0.8])
 
-with col_left:
-    st.markdown('<div class="stCard">', unsafe_allow_html=True)
-    
-    tab_jd, tab_res, tab_settings = st.tabs(["📋 Job Info", "📄 Resume", "⚙️ Settings"])
-    
-    with tab_jd:
-        role_list = [f"{v['icon']} {k}" for k, v in JOB_DESCRIPTIONS.items()] + ["✏️ Custom JD"]
-        selected_role = st.radio("Select role:", role_list, index=0)
-        
-        if "Custom" in selected_role:
-            jd_text = st.text_area("Custom JD", height=200)
-            weights = {}
-            jd_title = "Custom JD"
-        else:
-            role_name = selected_role.split(" ", 1)[1]
-            jd = JOB_DESCRIPTIONS[role_name]
-            jd_text = jd["description"]
-            weights = jd.get("weighted_criteria", DEFAULT_WEIGHTS)
-            jd_title = jd.get("title", role_name)
-            with st.expander("View JD"):
-                st.markdown(jd_text)
-        
-        if weights:
-            st.caption("**Weighted Criteria**")
-            for k, v in weights.items():
-                st.progress(v/100, text=f"{k} ({v}%)")
-    
-    with tab_res:
-        resume_option = st.selectbox("Load sample", ["Select..."] + list(SAMPLE_RESUMES.keys()) + ["Custom"])
-        if resume_option in SAMPLE_RESUMES:
-            resume_text = SAMPLE_RESUMES[resume_option]
-            with st.expander("View Resume"):
-                st.markdown(resume_text)
-        else:
-            resume_text = st.text_area("Paste resume", height=280)
-    
-    with tab_settings:
-        temperature = st.slider("Temperature", 0.0, 1.0, 0.1)
-        
-    st.divider()
+with ctrl1:
+    role_list = [f"{v['icon']} {k}" for k, v in JOB_DESCRIPTIONS.items()] + ["✏️ Custom JD"]
+    selected_role = st.selectbox("📋 Job Role", role_list, index=0)
+
+with ctrl2:
+    resume_option = st.selectbox("📄 Sample Resume", ["Select..."] + list(SAMPLE_RESUMES.keys()) + ["Custom"])
+
+with ctrl3:
+    temperature = st.slider("🌡️ Temp", 0.0, 1.0, 0.1)
+
+with ctrl4:
+    st.markdown("<br>", unsafe_allow_html=True)
     evaluate_btn = st.button("🔍 Evaluate Candidate", type="primary", use_container_width=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# ── Right Column: Results ──────────────────────────────────────────────────
+st.divider()
 
-with col_right:
+# ── Resolve JD & Resume text from selections ─────────────────────────────────
+if "Custom" in selected_role:
+    weights = {}
+    jd_title = "Custom JD"
+    jd_text = ""   # filled below in the JD pane
+else:
+    role_name = selected_role.split(" ", 1)[1]
+    jd = JOB_DESCRIPTIONS[role_name]
+    jd_text = jd["description"]
+    weights = jd.get("weighted_criteria", DEFAULT_WEIGHTS)
+    jd_title = jd.get("title", role_name)
+
+if resume_option in SAMPLE_RESUMES:
+    resume_text = SAMPLE_RESUMES[resume_option]
+else:
+    resume_text = ""   # filled below in Resume pane
+
+# ── Three-pane layout ─────────────────────────────────────────────────────────
+col_jd, col_res, col_result = st.columns([1, 1, 1.4])
+
+# ── Pane 1: Job Description ───────────────────────────────────────────────────
+with col_jd:
     st.markdown("""
-    <div style="background: white; border-radius: 20px; padding: 20px; 
-                box-shadow: 0 10px 40px rgba(0,0,0,0.08); min-height: 500px;">
+    <div style="background:white; border-radius:16px; padding:18px;
+                box-shadow:0 4px 20px rgba(0,0,0,0.08); min-height:580px;">
+    <h4 style="margin-top:0; color:#155799;">📋 Job Description</h4>
     """, unsafe_allow_html=True)
-    
-    # ── Results Header ─────────────────────────────────────────────────
-    st.markdown("### 📊 Evaluation Results")
+
+    if "Custom" in selected_role:
+        jd_text = st.text_area("Paste custom JD", height=460, label_visibility="collapsed",
+                               placeholder="Paste your job description here…")
+    else:
+        st.caption(f"**{jd_title}**")
+        if weights:
+            for k, v in weights.items():
+                st.progress(v / 100, text=f"{k} ({v}%)")
+            st.markdown("---")
+        st.markdown(
+            f'<div style="height:400px; overflow-y:auto; font-size:13px; '
+            f'color:#444; line-height:1.6;">{jd_text}</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ── Pane 2: Candidate Resume ──────────────────────────────────────────────────
+with col_res:
+    st.markdown("""
+    <div style="background:white; border-radius:16px; padding:18px;
+                box-shadow:0 4px 20px rgba(0,0,0,0.08); min-height:580px;">
+    <h4 style="margin-top:0; color:#159957;">📄 Candidate Resume</h4>
+    """, unsafe_allow_html=True)
+
+    if resume_option in SAMPLE_RESUMES:
+        st.caption(f"**{resume_option}**")
+        st.markdown(
+            f'<div style="height:480px; overflow-y:auto; font-size:13px; '
+            f'color:#444; white-space:pre-wrap; line-height:1.6;">{resume_text}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        resume_text = st.text_area("Paste resume", height=460, label_visibility="collapsed",
+                                   placeholder="Paste candidate resume here…")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ── Pane 3: Results ───────────────────────────────────────────────────────────
+with col_result:
+    st.markdown("""
+    <div style="background:white; border-radius:16px; padding:18px;
+                box-shadow:0 4px 20px rgba(0,0,0,0.08); min-height:580px;">
+    <h4 style="margin-top:0; color:#764ba2;">📊 Evaluation Results</h4>
+    """, unsafe_allow_html=True)
     
     # Check if we should run evaluation
     if evaluate_btn:
