@@ -463,287 +463,237 @@ def scan_resume(jd_text: str, resume_text: str, temperature: float = 0.1):
         
     return result
 
-# ── UI ───────────────────────────────────────────────────────────────────────
-st.markdown('<h1 style="text-align: center;"><span class="gradient-text">🎯 Resume Scanner Pro</span></h1>', unsafe_allow_html=True)
-st.caption("Training Demo • Visual & Interactive")
+# ── Sidebar: all controls ────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("## 🎯 Resume Scanner Pro")
+    st.caption("AI-Powered Candidate Evaluation")
+    st.divider()
 
-# ── Top control bar: role selector + resume selector + temperature + button ──
-ctrl1, ctrl2, ctrl3, ctrl4 = st.columns([1.4, 1.4, 0.6, 0.8])
-
-with ctrl1:
+    st.markdown("### 📋 Job Role")
     role_list = [f"{v['icon']} {k}" for k, v in JOB_DESCRIPTIONS.items()] + ["✏️ Custom JD"]
-    selected_role = st.selectbox("📋 Job Role", role_list, index=0)
+    selected_role = st.radio("Select role", role_list, index=0, label_visibility="collapsed")
 
-with ctrl2:
-    resume_option = st.selectbox("📄 Sample Resume", ["Select..."] + list(SAMPLE_RESUMES.keys()) + ["Custom"])
+    st.divider()
 
-with ctrl3:
-    temperature = st.slider("🌡️ Temp", 0.0, 1.0, 0.1)
+    st.markdown("### 📄 Candidate Resume")
+    resume_option = st.selectbox("Load sample", ["Select..."] + list(SAMPLE_RESUMES.keys()) + ["Custom"],
+                                  label_visibility="collapsed")
 
-with ctrl4:
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.divider()
+
+    st.markdown("### ⚙️ Settings")
+    temperature = st.slider("Temperature", 0.0, 1.0, 0.1,
+                            help="Lower = more consistent, Higher = more creative")
+
+    st.divider()
     evaluate_btn = st.button("🔍 Evaluate Candidate", type="primary", use_container_width=True)
 
-st.divider()
+    # Weighted criteria display in sidebar
+    if "Custom" not in selected_role:
+        role_name_s = selected_role.split(" ", 1)[1]
+        w = JOB_DESCRIPTIONS[role_name_s].get("weighted_criteria", DEFAULT_WEIGHTS)
+        if w:
+            st.divider()
+            st.markdown("### 📊 Score Weights")
+            for k, v in w.items():
+                st.progress(v / 100, text=f"{k} ({v}%)")
 
-# ── Resolve JD & Resume text from selections ─────────────────────────────────
+# ── Resolve JD & Resume text ──────────────────────────────────────────────────
 if "Custom" in selected_role:
     weights = {}
     jd_title = "Custom JD"
-    jd_text = ""   # filled below in the JD pane
+    jd_text_resolved = ""
 else:
     role_name = selected_role.split(" ", 1)[1]
     jd = JOB_DESCRIPTIONS[role_name]
-    jd_text = jd["description"]
+    jd_text_resolved = jd["description"]
     weights = jd.get("weighted_criteria", DEFAULT_WEIGHTS)
     jd_title = jd.get("title", role_name)
 
-if resume_option in SAMPLE_RESUMES:
-    resume_text = SAMPLE_RESUMES[resume_option]
-else:
-    resume_text = ""   # filled below in Resume pane
+resume_text_resolved = SAMPLE_RESUMES.get(resume_option, "")
 
-# ── Three-pane layout ─────────────────────────────────────────────────────────
-col_jd, col_res, col_result = st.columns([1, 1, 1.4])
+# ── Page header ───────────────────────────────────────────────────────────────
+st.markdown('<h1 style="text-align:center;"><span class="gradient-text">🎯 Resume Scanner Pro</span></h1>',
+            unsafe_allow_html=True)
+st.caption("Training Demo • Visual & Interactive")
+st.divider()
 
-# ── Pane 1: Job Description ───────────────────────────────────────────────────
+# ── Two-pane: JD left | Resume right ─────────────────────────────────────────
+col_jd, col_res = st.columns(2)
+
 with col_jd:
-    st.markdown("""
-    <div style="background:white; border-radius:16px; padding:18px;
-                box-shadow:0 4px 20px rgba(0,0,0,0.08); min-height:580px;">
-    <h4 style="margin-top:0; color:#155799;">📋 Job Description</h4>
-    """, unsafe_allow_html=True)
-
+    st.markdown("#### 📋 Job Description")
     if "Custom" in selected_role:
-        jd_text = st.text_area("Paste custom JD", height=460, label_visibility="collapsed",
+        jd_text = st.text_area("Paste your JD here", height=420,
                                placeholder="Paste your job description here…")
     else:
         st.caption(f"**{jd_title}**")
-        if weights:
-            for k, v in weights.items():
-                st.progress(v / 100, text=f"{k} ({v}%)")
-            st.markdown("---")
+        jd_text = jd_text_resolved
         st.markdown(
-            f'<div style="height:400px; overflow-y:auto; font-size:13px; '
-            f'color:#444; line-height:1.6;">{jd_text}</div>',
+            f'<div style="height:400px; overflow-y:auto; font-size:13px; color:#444;'
+            f'line-height:1.7; background:#f8f9fa; border-radius:10px; padding:14px;">'
+            f'{jd_text}</div>',
             unsafe_allow_html=True,
         )
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ── Pane 2: Candidate Resume ──────────────────────────────────────────────────
 with col_res:
-    st.markdown("""
-    <div style="background:white; border-radius:16px; padding:18px;
-                box-shadow:0 4px 20px rgba(0,0,0,0.08); min-height:580px;">
-    <h4 style="margin-top:0; color:#159957;">📄 Candidate Resume</h4>
-    """, unsafe_allow_html=True)
-
-    if resume_option in SAMPLE_RESUMES:
+    st.markdown("#### 📄 Candidate Resume")
+    if resume_option == "Custom" or resume_option == "Select...":
+        resume_text = st.text_area("Paste resume here", height=420,
+                                   placeholder="Paste candidate resume here…")
+    else:
         st.caption(f"**{resume_option}**")
+        resume_text = resume_text_resolved
         st.markdown(
-            f'<div style="height:480px; overflow-y:auto; font-size:13px; '
-            f'color:#444; white-space:pre-wrap; line-height:1.6;">{resume_text}</div>',
+            f'<div style="height:400px; overflow-y:auto; font-size:13px; color:#444;'
+            f'white-space:pre-wrap; line-height:1.7; background:#f8f9fa;'
+            f'border-radius:10px; padding:14px;">{resume_text}</div>',
             unsafe_allow_html=True,
         )
+
+st.divider()
+
+# ── Results section: full width below the panes ───────────────────────────────
+st.markdown("### 📊 Evaluation Results")
+
+# Check if we should run evaluation
+if evaluate_btn:
+    if not jd_text.strip():
+        st.warning("⚠️ Please provide a job description")
+    elif not resume_text.strip():
+        st.warning("⚠️ Please provide a candidate resume")
     else:
-        resume_text = st.text_area("Paste resume", height=460, label_visibility="collapsed",
-                                   placeholder="Paste candidate resume here…")
+        with st.spinner("🔍 Analyzing candidate against job requirements..."):
+            result = scan_resume(jd_text, resume_text, temperature)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+            if result.get("error"):
+                st.error(f"❌ Evaluation error: {result['error']}")
+            else:
+                # ── Score + Verdict ──────────────────────────────────
+                score = result.get("overall_score", 0)
+                verdict = result.get("verdict", "UNKNOWN")
+                score_color = get_score_color(score)
 
-# ── Pane 3: Results ───────────────────────────────────────────────────────────
-with col_result:
+                col_score, col_verdict = st.columns([1, 2])
+
+                with col_score:
+                    st.markdown(f"""
+                    <div style="text-align: center;">
+                        <div class="score-circle" style="
+                            background: conic-gradient(
+                                {score_color} 0% {score * 10}%,
+                                #f0f0f0 {score * 10}% 100%
+                            );
+                            border: 4px solid {score_color};
+                            color: {score_color};
+                        ">{score:.1f}</div>
+                        <p style="font-size: 12px; color: #999; margin-top: 5px;">out of 10</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with col_verdict:
+                    icon = get_verdict_icon(verdict)
+                    if verdict == "SELECTED":
+                        st.success(f"### {icon} SELECTED")
+                        st.markdown('<div style="background:#d4edda;border-radius:10px;padding:10px;"><p style="color:#155724;margin:0;">🎉 Highly recommended for interview</p></div>', unsafe_allow_html=True)
+                        st.balloons()
+                    elif verdict == "MANAGER REVIEW":
+                        st.warning(f"### {icon} MANAGER REVIEW")
+                        st.markdown('<div style="background:#fff3cd;border-radius:10px;padding:10px;"><p style="color:#856404;margin:0;">👤 Requires hiring manager discussion</p></div>', unsafe_allow_html=True)
+                    else:
+                        st.error(f"### {icon} NOT SELECTED")
+                        st.markdown('<div style="background:#f8d7da;border-radius:10px;padding:10px;"><p style="color:#721c24;margin:0;">❌ Does not meet minimum requirements</p></div>', unsafe_allow_html=True)
+
+                st.divider()
+
+                # ── Category Scores ──────────────────────────────
+                if result.get("category_scores"):
+                    st.markdown("#### 📊 Category Scores")
+                    cats = list(result["category_scores"].items())
+                    num_cols = min(4, len(cats))
+                    cols = st.columns(num_cols)
+                    for i, (cat, score_val) in enumerate(cats[:num_cols]):
+                        with cols[i % num_cols]:
+                            cat_color = get_score_color(score_val)
+                            st.markdown(f"""
+                            <div style="text-align:center;padding:10px;background:#f8f9fa;
+                                        border-radius:10px;border-left:4px solid {cat_color};">
+                                <p style="font-size:12px;color:#666;margin:0;">{cat[:20]}</p>
+                                <p style="font-size:24px;font-weight:700;color:{cat_color};margin:5px 0;">{score_val:.1f}</p>
+                                <p style="font-size:10px;color:#999;margin:0;">/10</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                st.divider()
+
+                # ── Strengths and Gaps ────────────────────────────
+                col_sg1, col_sg2 = st.columns(2)
+                with col_sg1:
+                    if result.get("strengths"):
+                        st.markdown("#### 💪 Strengths")
+                        for strength in result["strengths"][:5]:
+                            st.success(f"• {strength}")
+                with col_sg2:
+                    if result.get("gaps"):
+                        st.markdown("#### ⚠️ Gaps & Concerns")
+                        for gap in result["gaps"][:5]:
+                            st.error(f"• {gap}")
+
+                st.divider()
+
+                # ── Full Justification ────────────────────────────
+                st.markdown("#### 📝 Detailed Justification")
+                with st.expander("View full evaluation", expanded=True):
+                    st.markdown(result.get("justification", "No justification available"))
+
+                with st.expander("🔍 View raw AI output"):
+                    st.code(result.get("raw_output", ""), language="text")
+
+                # ── Download ──────────────────────────────────────
+                st.divider()
+                col_dl1, col_dl2 = st.columns(2)
+                with col_dl1:
+                    export_data = {
+                        "timestamp": datetime.now().isoformat(),
+                        "job_title": jd_title,
+                        "score": score,
+                        "verdict": verdict,
+                        "category_scores": result.get("category_scores", {}),
+                        "strengths": result.get("strengths", []),
+                        "gaps": result.get("gaps", []),
+                        "justification": result.get("justification", ""),
+                        "raw_output": result.get("raw_output", "")
+                    }
+                    st.download_button(
+                        "📥 Download Report (JSON)",
+                        data=json.dumps(export_data, indent=2),
+                        file_name=f"candidate_report_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
+                with col_dl2:
+                    st.button("📋 Copy Summary", on_click=lambda: st.write("Copied!"),
+                              use_container_width=True)
+
+else:
+    # Placeholder when no evaluation done
     st.markdown("""
-    <div style="background:white; border-radius:16px; padding:18px;
-                box-shadow:0 4px 20px rgba(0,0,0,0.08); min-height:580px;">
-    <h4 style="margin-top:0; color:#764ba2;">📊 Evaluation Results</h4>
-    """, unsafe_allow_html=True)
-    
-    # Check if we should run evaluation
-    if evaluate_btn:
-        if not jd_text.strip():
-            st.warning("⚠️ Please provide a job description")
-        elif not resume_text.strip():
-            st.warning("⚠️ Please provide a candidate resume")
-        else:
-            with st.spinner("🔍 Analyzing candidate against job requirements..."):
-                result = scan_resume(jd_text, resume_text, temperature)
-                
-                if result.get("error"):
-                    st.error(f"❌ Evaluation error: {result['error']}")
-                else:
-                    # ── Score Display ──────────────────────────────────
-                    score = result.get("overall_score", 0)
-                    verdict = result.get("verdict", "UNKNOWN")
-                    
-                    # Big score circle
-                    score_color = get_score_color(score)
-                    
-                    col_score, col_verdict = st.columns([1, 2])
-                    
-                    with col_score:
-                        st.markdown(f"""
-                        <div style="text-align: center;">
-                            <div class="score-circle" style="
-                                background: conic-gradient(
-                                    {score_color} 0% {score * 10}%, 
-                                    #f0f0f0 {score * 10}% 100%
-                                );
-                                border: 4px solid {score_color};
-                                color: {score_color};
-                            ">
-                                {score:.1f}
-                            </div>
-                            <p style="font-size: 12px; color: #999; margin-top: 5px;">out of 10</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with col_verdict:
-                        icon = get_verdict_icon(verdict)
-                        color = get_verdict_color(verdict)
-                        
-                        if verdict == "SELECTED":
-                            st.success(f"### {icon} SELECTED")
-                            st.markdown(f"""
-                            <div style="background: #d4edda; border-radius: 10px; padding: 10px;">
-                                <p style="color: #155724; margin: 0;">
-                                    🎉 Highly recommended for interview
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            # Balloons for selected
-                            st.balloons()
-                        elif verdict == "MANAGER REVIEW":
-                            st.warning(f"### {icon} MANAGER REVIEW")
-                            st.markdown(f"""
-                            <div style="background: #fff3cd; border-radius: 10px; padding: 10px;">
-                                <p style="color: #856404; margin: 0;">
-                                    👤 Requires hiring manager discussion
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.error(f"### {icon} NOT SELECTED")
-                            st.markdown(f"""
-                            <div style="background: #f8d7da; border-radius: 10px; padding: 10px;">
-                                <p style="color: #721c24; margin: 0;">
-                                    ❌ Does not meet minimum requirements
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    st.divider()
-                    
-                    # ── Category Scores ──────────────────────────────
-                    if result.get("category_scores"):
-                        st.markdown("#### 📊 Category Scores")
-                        
-                        cats = list(result["category_scores"].items())
-                        num_cols = min(4, len(cats))
-                        cols = st.columns(num_cols)
-                        
-                        for i, (cat, score_val) in enumerate(cats[:num_cols]):
-                            with cols[i % num_cols]:
-                                cat_color = get_score_color(score_val)
-                                st.markdown(f"""
-                                <div style="text-align: center; padding: 10px; 
-                                            background: #f8f9fa; border-radius: 10px;
-                                            border-left: 4px solid {cat_color};">
-                                    <p style="font-size: 12px; color: #666; margin: 0;">
-                                        {cat[:20]}
-                                    </p>
-                                    <p style="font-size: 24px; font-weight: 700; 
-                                              color: {cat_color}; margin: 5px 0;">
-                                        {score_val:.1f}
-                                    </p>
-                                    <p style="font-size: 10px; color: #999; margin: 0;">/10</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                    
-                    st.divider()
-                    
-                    # ── Strengths and Gaps ────────────────────────────
-                    col_sg1, col_sg2 = st.columns(2)
-                    
-                    with col_sg1:
-                        if result.get("strengths"):
-                            st.markdown("#### 💪 Strengths")
-                            for strength in result["strengths"][:5]:
-                                st.success(f"• {strength}")
-                    
-                    with col_sg2:
-                        if result.get("gaps"):
-                            st.markdown("#### ⚠️ Gaps & Concerns")
-                            for gap in result["gaps"][:5]:
-                                st.error(f"• {gap}")
-                    
-                    st.divider()
-                    
-                    # ── Full Justification ────────────────────────────
-                    st.markdown("#### 📝 Detailed Justification")
-                    with st.expander("View full evaluation", expanded=True):
-                        st.markdown(result.get("justification", "No justification available"))
-                    
-                    # ── Raw Output ──────────────────────────────────
-                    with st.expander("🔍 View raw AI output"):
-                        st.code(result.get("raw_output", ""), language="text")
-                    
-                    # ── Download Result ──────────────────────────────
-                    st.divider()
-                    col_dl1, col_dl2 = st.columns(2)
-                    
-                    with col_dl1:
-                        # Export as JSON
-                        export_data = {
-                            "timestamp": datetime.now().isoformat(),
-                            "job_title": jd_title,
-                            "score": score,
-                            "verdict": verdict,
-                            "category_scores": result.get("category_scores", {}),
-                            "strengths": result.get("strengths", []),
-                            "gaps": result.get("gaps", []),
-                            "justification": result.get("justification", ""),
-                            "raw_output": result.get("raw_output", "")
-                        }
-                        json_str = json.dumps(export_data, indent=2)
-                        st.download_button(
-                            "📥 Download Report (JSON)",
-                            data=json_str,
-                            file_name=f"candidate_report_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
-                            mime="application/json",
-                            use_container_width=True
-                        )
-                    
-                    with col_dl2:
-                        # Copy to clipboard
-                        st.button(
-                            "📋 Copy Summary",
-                            on_click=lambda: st.write("Copied!"),
-                            use_container_width=True
-                        )
-    
-    else:
-        # Placeholder when no evaluation done
-        st.markdown("""
-        <div style="text-align: center; padding: 60px 20px;">
-            <p style="font-size: 64px; margin: 0;">🔍</p>
-            <h3 style="color: #666; margin: 20px 0;">Ready to Evaluate</h3>
-            <p style="color: #999; font-size: 16px;">
-                Select a job role, load a resume, and click<br>
-                <strong>"Evaluate Candidate"</strong> to get started.
+    <div style="text-align: center; padding: 40px 20px;">
+        <p style="font-size: 64px; margin: 0;">🔍</p>
+        <h3 style="color: #666; margin: 20px 0;">Ready to Evaluate</h3>
+        <p style="color: #999; font-size: 16px;">
+            Select a job role and resume from the sidebar, then click
+            <strong>"Evaluate Candidate"</strong> to get started.
+        </p>
+        <div style="background: #f8f9fa; border-radius: 10px; padding: 15px;
+                    margin-top: 20px; display:inline-block; text-align: left;">
+            <p style="color: #666; font-size: 14px; margin: 0;">
+                💡 <strong>Tip:</strong> Try <strong>Strong Linux Engineer</strong>
+                vs <strong>Weak Linux Engineer</strong> to see the scoring contrast.
             </p>
-            <div style="background: #f8f9fa; border-radius: 10px; padding: 15px; 
-                        margin-top: 20px; text-align: left;">
-                <p style="color: #666; font-size: 14px; margin: 0;">
-                    💡 <strong>Tip:</strong> Try loading a <strong>Strong Linux Engineer</strong> 
-                    sample and compare with a <strong>Weak Linux Engineer</strong> to see the scoring in action.
-                </p>
-            </div>
         </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
 # ── Footer ──────────────────────────────────────────────────────────────────
 
