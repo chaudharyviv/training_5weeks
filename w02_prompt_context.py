@@ -1,6 +1,8 @@
+
 """
 Resume Scanner Pro — AI-Powered Candidate Evaluation (Fixed & Improved)
 ====================================================
+Now with Clear "Why Selected/Rejected" Section
 """
 
 import json
@@ -9,51 +11,23 @@ from datetime import datetime
 from openai import OpenAI
 import streamlit as st
 
-# ── Page Config ───────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Resume Scanner Pro",
-    page_icon="🎯",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+# ── Page Config & CSS ───────────────────────────────────────────────────────
+st.set_page_config(page_title="Resume Scanner Pro", page_icon="🎯", layout="wide", initial_sidebar_state="expanded")
 
-# ── Custom CSS ───────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
     .main { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
-    .gradient-text {
-        background: linear-gradient(120deg, #155799, #159957);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        font-weight: 800;
-    }
-    .score-circle {
-        width: 140px; height: 140px; border-radius: 50%; margin: 0 auto;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 48px; font-weight: 800; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-        transition: all 0.3s ease;
-    }
-    .score-circle:hover { transform: scale(1.08); }
-    .resume-box {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 16px;
-        max-height: 420px;
-        overflow-y: auto;
-        white-space: pre-wrap;
-        font-size: 13.5px;
-        line-height: 1.65;
-        border: 1px solid #e0e0e0;
-    }
+    .gradient-text { background: linear-gradient(120deg, #155799, #159957); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+    .score-circle { width: 140px; height: 140px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800; box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+    .resume-box { background: #f8f9fa; border-radius: 10px; padding: 16px; max-height: 420px; overflow-y: auto; white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; border: 1px solid #e0e0e0; }
+    .decision-box { padding: 20px; border-radius: 12px; font-size: 16px; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Session State ───────────────────────────────────────────────────────────
-if "resume_text" not in st.session_state:
-    st.session_state.resume_text = ""
-if "jd_text" not in st.session_state:
-    st.session_state.jd_text = ""
-if "last_sample" not in st.session_state:
-    st.session_state.last_sample = None
+if "resume_text" not in st.session_state: st.session_state.resume_text = ""
+if "jd_text" not in st.session_state: st.session_state.jd_text = ""
+if "last_sample" not in st.session_state: st.session_state.last_sample = None
 
 # ── OpenAI Client ───────────────────────────────────────────────────────────
 @st.cache_resource
@@ -66,7 +40,7 @@ def get_client():
 
 oai = get_client()
 
-# ── Job Descriptions (FULL) ─────────────────────────────────────────────────
+# ── Job Descriptions ─────────────────────────────────────────────────
 JOB_DESCRIPTIONS = {
     "Linux Engineer": {
         "title": "🐧 Linux Engineer",
@@ -314,23 +288,31 @@ RECOMMENDATION:
 [Final recommendation]
 """
 
-# ── Helper Functions ────────────────────────────────────────────────────────
+# ── Helper Functions (Improved Parsing) ─────────────────────────────────────
 def ask_gpt(system: str, user: str, temperature: float = 0.1):
     if not oai:
-        return "❌ OpenAI client not initialized. Check API key."
+        return "❌ OpenAI client not initialized."
     try:
         r = oai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             temperature=temperature,
-            max_tokens=1500
+            max_tokens=1600
         )
         return r.choices[0].message.content.strip()
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
 def parse_evaluation_response(response: str):
-    result = {"raw": response, "overall_score": 0.0, "verdict": "ERROR", "category_scores": {}, "strengths": [], "gaps": []}
+    result = {
+        "raw": response,
+        "overall_score": 0.0,
+        "verdict": "ERROR",
+        "category_scores": {},
+        "strengths": [],
+        "gaps": [],
+        "recommendation": "No recommendation available."
+    }
     
     score_match = re.search(r"Overall Score:\s*([\d.]+)", response, re.I)
     if score_match:
@@ -340,11 +322,13 @@ def parse_evaluation_response(response: str):
     if verdict_match:
         result["verdict"] = verdict_match.group(1).upper()
     
+    # Category scores
     for match in re.finditer(r"([A-Za-z &\-]+?):\s*([\d.]+)/10", response):
         cat = match.group(1).strip()
         if "Overall" not in cat:
             result["category_scores"][cat] = float(match.group(2))
     
+    # Strengths & Gaps
     strengths_sec = re.search(r"STRENGTHS:(.*?)(?:GAPS & CONCERNS:|RECOMMENDATION:|$)", response, re.DOTALL | re.I)
     if strengths_sec:
         result["strengths"] = [s.strip() for s in re.findall(r"[•-]\s*(.+)", strengths_sec.group(1)) if s.strip()]
@@ -352,6 +336,11 @@ def parse_evaluation_response(response: str):
     gaps_sec = re.search(r"GAPS.*?:(.*?)(?:RECOMMENDATION:|$)", response, re.DOTALL | re.I)
     if gaps_sec:
         result["gaps"] = [g.strip() for g in re.findall(r"[•-]\s*(.+)", gaps_sec.group(1)) if g.strip()]
+    
+    # Recommendation (Key Improvement)
+    rec_match = re.search(r"RECOMMENDATION:(.*?)(?=$)", response, re.DOTALL | re.I)
+    if rec_match:
+        result["recommendation"] = rec_match.group(1).strip()
     
     return result
 
@@ -371,13 +360,9 @@ def scan_resume(jd_text: str, resume_text: str, temperature: float = 0.1):
     
     result = parse_evaluation_response(raw_response)
     result["raw_output"] = raw_response
-    
-    just_match = re.search(r"DETAILED JUSTIFICATION:(.*?)(?:STRENGTHS:|GAPS & CONCERNS:|RECOMMENDATION:|$)", raw_response, re.DOTALL | re.I)
-    result["justification"] = just_match.group(1).strip() if just_match else "See raw output for details."
-    
     return result
 
-# ── Sidebar ─────────────────────────────────────────────────────────────────
+# ── Sidebar (Same) ──────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🎯 Resume Scanner Pro")
     st.caption("AI-Powered Candidate Evaluation")
@@ -388,13 +373,8 @@ with st.sidebar:
     selected_role = st.radio("Select role", role_list, index=0, label_visibility="collapsed")
 
     st.divider()
-
     st.markdown("### 📄 Candidate Resume")
-    resume_option = st.selectbox(
-        "Load sample", 
-        ["Select..."] + list(SAMPLE_RESUMES.keys()) + ["Custom / Paste"],
-        label_visibility="collapsed"
-    )
+    resume_option = st.selectbox("Load sample", ["Select..."] + list(SAMPLE_RESUMES.keys()) + ["Custom / Paste"], label_visibility="collapsed")
 
     if st.button("📥 Load Selected Sample", use_container_width=True):
         if resume_option in SAMPLE_RESUMES:
@@ -404,16 +384,14 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-
     st.markdown("### ⚙️ Settings")
     temperature = st.slider("Temperature", 0.0, 1.0, 0.1)
-
     st.divider()
     evaluate_btn = st.button("🔍 Evaluate Candidate", type="primary", use_container_width=True)
 
-# ── Main UI ────────────────────────────────────────────────────────────────
+# ── Main UI ─────────────────────────────────────────────────────────────────
 st.markdown('<h1 style="text-align:center;"><span class="gradient-text">🎯 Resume Scanner Pro</span></h1>', unsafe_allow_html=True)
-st.caption("Fixed Version with Full Samples")
+st.caption("Now with Clear Decision Reasoning")
 st.divider()
 
 col_jd, col_res = st.columns(2)
@@ -434,20 +412,17 @@ with col_res:
     st.markdown("#### 📄 Candidate Resume")
     if st.session_state.get("last_sample"):
         st.caption(f"**Loaded:** {st.session_state.last_sample}")
-    
-    resume_text = st.text_area("Resume Content", value=st.session_state.resume_text, height=420, placeholder="Paste resume here...")
+    resume_text = st.text_area("Resume Content", value=st.session_state.resume_text, height=420)
     st.session_state.resume_text = resume_text
 
 st.divider()
 
-# ── Evaluation ─────────────────────────────────────────────────────────────
+# ── Results ─────────────────────────────────────────────────────────────────
 st.markdown("### 📊 Evaluation Results")
 
 if evaluate_btn:
-    if not jd_text.strip():
-        st.error("Please provide a Job Description")
-    elif not resume_text.strip():
-        st.error("Please provide a Candidate Resume")
+    if not jd_text.strip() or not resume_text.strip():
+        st.error("Please provide both Job Description and Resume")
     else:
         with st.spinner("🔍 Analyzing with AI..."):
             result = scan_resume(jd_text, resume_text, temperature)
@@ -459,6 +434,7 @@ if evaluate_btn:
             verdict = result.get("verdict", "UNKNOWN")
             score_color = get_score_color(score)
 
+            # Score & Verdict
             col_score, col_verdict = st.columns([1, 2])
             with col_score:
                 st.markdown(f"""
@@ -471,16 +447,53 @@ if evaluate_btn:
                 icon = get_verdict_icon(verdict)
                 if verdict == "SELECTED":
                     st.success(f"### {icon} SELECTED")
-                    st.balloons()
                 elif verdict == "MANAGER REVIEW":
                     st.warning(f"### {icon} MANAGER REVIEW")
                 else:
                     st.error(f"### {icon} NOT SELECTED")
 
-            # Add more UI elements (category scores, strengths, gaps, etc.) as needed
+            st.divider()
+
+            # ── NEW: Clear Decision Reasoning ─────────────────────────────
+            st.markdown("#### 🎯 Why This Decision?")
+            with st.container():
+                decision_color = "#d4edda" if verdict == "SELECTED" else "#f8d7da" if verdict == "NOT SELECTED" else "#fff3cd"
+                st.markdown(f"""
+                <div class="decision-box" style="background:{decision_color}; border-left: 6px solid {score_color};">
+                    {result.get('recommendation', 'No specific recommendation generated.')}
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.divider()
+
+            # Category Scores, Strengths, Gaps
+            if result.get("category_scores"):
+                st.markdown("#### 📊 Category Scores")
+                cols = st.columns(len(result["category_scores"]))
+                for i, (cat, sc) in enumerate(result["category_scores"].items()):
+                    with cols[i]:
+                        st.metric(cat, f"{sc:.1f}/10")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("#### 💪 Strengths")
+                for s in result.get("strengths", []):
+                    st.success(f"• {s}")
+            with col2:
+                st.markdown("#### ⚠️ Gaps & Concerns")
+                for g in result.get("gaps", []):
+                    st.error(f"• {g}")
+
+            st.divider()
+            with st.expander("📝 Full Detailed Justification", expanded=True):
+                st.markdown(result.get("raw_output", "No details available."))
+
+            # Download
+            export_data = {**result, "timestamp": datetime.now().isoformat(), "job_title": selected_role}
+            st.download_button("📥 Download Full Report (JSON)", data=json.dumps(export_data, indent=2), file_name=f"resume_evaluation_{datetime.now().strftime('%Y%m%d_%H%M')}.json", mime="application/json")
 
 else:
-    st.info("Select role & resume from sidebar, then click **Evaluate Candidate**")
+    st.info("👈 Select role & resume from sidebar, then click **Evaluate Candidate**")
 
 st.divider()
-st.markdown("<div style='text-align:center;color:#777;'>Resume Scanner Pro - Fully Fixed</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;color:#777;'>Resume Scanner Pro • Clear Decision Reasoning </div>", unsafe_allow_html=True)
