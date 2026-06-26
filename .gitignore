@@ -1,7 +1,10 @@
 .env
 .ipynb_checkpoints/
-__pycache__/
+*__pycache__/
 *.pyc
 *.mp4
 *.mp3
 *.wav
+.vscode
+*chroma*
+ shared/__pycache__/

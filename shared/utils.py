@@ -33,6 +33,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field, asdict
 
 from pydantic import BaseModel, Field, field_validator
+from IPython.core.display import Markdown, display
 
 # ── Auto-load .env (works from any working directory) ─────────────────────────
 try:
@@ -829,10 +830,10 @@ def section(title: str) -> None:
     print(f"\n── {title} {'─' * max(0, 55 - len(title))}")
 
 def observe(note: str) -> None:
-    print(f"\n💡  OBSERVE: {note}\n")
+    display(Markdown(f"\n💡  OBSERVE: {note}\n"))               
 
 def discuss(note: str) -> None:
-    print(f"\n🗣️   DISCUSS: {note}\n")
+    display(Markdown(f"\n🗣️   DISCUSS: {note}\n"))
 
 def warn(note: str) -> None:
     print(f"\n⚠️   WARNING: {note}\n")
